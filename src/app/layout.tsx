@@ -5,6 +5,7 @@ import "./globals.css";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { ProgressBarProvider } from "./components/TopLoadingBar";
 import Script from "next/script";
+import {SocketProvider} from "./components/providers/SocketProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -69,9 +70,11 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
+          <SocketProvider>
           <ProgressBarProvider>
             {children}
           </ProgressBarProvider>
+          </SocketProvider>
         </ThemeProvider>
       </body>
     </html>
