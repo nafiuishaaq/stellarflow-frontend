@@ -106,6 +106,7 @@ export default function LogsPage() {
     getScrollElement: () => parentRef.current,
     estimateSize: () => 64, // Estimate based on typical row height
     overscan: 10,
+    scrollOptions: { passive: true }, // Improve scroll performance by using passive event listeners
   });
 
   const [isOnline, setIsOnline] = useState(true);
