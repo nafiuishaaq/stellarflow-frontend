@@ -2,35 +2,14 @@
 
 import React, { useState, useMemo } from 'react';
 import { useDebounce } from '../hooks/useDebounce';
-import { buildShortenedAddressMap } from '@/utils/addressUtils';
-import { 
-  ShieldCheck, 
-  Coins, 
-  Percent, 
-  Flame, 
-  Search, 
-  RefreshCw, 
-  AlertTriangle, 
-  Gavel, 
-  TrendingUp, 
-  ArrowUpRight 
-} from 'lucide-react';
+import { Icon, ICON_IDS } from '@/components/icons';
 import {
-  getHealthBarColor,
-  STAKER_SLASHING_NO_EVENTS,
-  STAKER_SLASHING_WITH_EVENTS,
-} from '@/lib/classNameVariants';
+  StakerTableRow,
+  type StakerTableRecord,
+} from '@/app/components/staking/StakerTableRow';
 
 // --- Types ---
-interface StakerNode {
-  id: string;
-  nodeName: string;
-  operatorAddress: string;
-  stakedAmountXLM: number;
-  accruedRewardsXLM: number;
-  totalSlashingEvents: number;
-  healthFactor: number; // Percentage score
-}
+type StakerNode = StakerTableRecord;
 
 // --- Mock Data ---
 const MOCK_STAKERS: StakerNode[] = [
@@ -49,12 +28,6 @@ export default function StakingPage() {
     if (!q) return MOCK_STAKERS;
     return MOCK_STAKERS.filter(s => s.nodeName.toLowerCase().includes(q) || s.operatorAddress.toLowerCase().includes(q));
   }, [debouncedSearch]);
-
-  // Pre-compute shortened addresses on data ingestion to avoid render-time string slicing
-  const shortenedAddressMap = useMemo<Record<string, string>>(
-    () => buildShortenedAddressMap(MOCK_STAKERS, 'id', 'operatorAddress'),
-    [MOCK_STAKERS],
-  );
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-gray-100 p-8">
@@ -116,45 +89,7 @@ export default function StakingPage() {
             </thead>
             <tbody className="divide-y divide-gray-800">
               {displayedStakers.map((node) => (
-                <tr key={node.id} className="hover:bg-[#1c2128] transition-colors group">
-                  <td className="px-6 py-4">
-                    <div className="font-medium text-gray-200">{node.nodeName}</div>
-                    {/* PERFORMANCE OPTIMIZATION: O(1) map lookup instead of O(n) array scan */}
-                    <div className="text-xs text-gray-500 font-mono">{shortenedAddressMap[node.id]}</div>
-                  </td>
-                  <td className="px-6 py-4 text-sm font-mono text-gray-300">
-                    {node.stakedAmountXLM.toLocaleString()} XLM
-                  </td>
-                  <td className="px-6 py-4 text-sm font-mono text-emerald-400">
-                    +{node.accruedRewardsXLM.toLocaleString()} XLM
-                  </td>
-                  <td className="px-6 py-4 node-status-cell">
-                    <div className="flex items-center gap-2 metric-indicator">
-                      <div className="w-16 bg-gray-700 h-1.5 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full dynamic-scale-x ${getHealthBarColor(node.healthFactor)}`} 
-                          style={{ '--scale-x': node.healthFactor/100 } as React.CSSProperties}
-                        />
-                      </div>
-                      <span className="text-xs font-semibold numeric-value">{node.healthFactor}%</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 node-status-cell">
-                    <span className={`px-2 py-0.5 rounded text-xs font-mono font-bold high-frequency-badge ${
-                      node.totalSlashingEvents === 0 
-                        ? STAKER_SLASHING_NO_EVENTS 
-                        : STAKER_SLASHING_WITH_EVENTS
-                    }`}>
-                      {node.totalSlashingEvents} slash events
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button className="text-blue-400 hover:text-blue-300 inline-flex items-center gap-1 text-xs font-medium">
-                      <span>Manage Node</span>
-                      <Icon id={ICON_IDS.arrowUpRight} size={12} />
-                    </button>
-                  </td>
-                </tr>
+                <StakerTableRow key={node.id} node={node} />
               ))}
             </tbody>
           </table>
