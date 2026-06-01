@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Icon, ICON_IDS } from '@/components/icons';
 import { useXdrWorker } from './useXdrWorker';
+import { buildHighlightedParts } from '@/utils/textUtils';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -317,31 +318,23 @@ export default function LogsPage() {
 // --- Sub-components ---
 
 function SearchHighlight({ text, matches }: { text: string; matches?: [number, number][] }) {
-  if (!matches || matches.length === 0) return <span>{text}</span>;
+  const deps = React.useMemo(() => ({ text, matchesJson: matches ? JSON.stringify(matches) : '' }), [text, matches ? JSON.stringify(matches) : '']);
 
-  const result = [];
-  let lastIndex = 0;
+  const parts = React.useMemo(() => buildHighlightedParts(text, matches), [deps.text, deps.matchesJson]);
 
-  matches.forEach(([start, end], idx) => {
-    // Add text before match
-    if (start > lastIndex) {
-      result.push(text.slice(lastIndex, start));
-    }
-    // Add highlighted match
-    result.push(
-      <mark key={idx} className="bg-[#CBF34D]/30 text-[#CBF34D] rounded-sm px-0.5 border-b border-[#CBF34D]/50 no-underline">
-        {text.slice(start, end + 1)}
-      </mark>
-    );
-    lastIndex = end + 1;
-  });
-
-  // Add remaining text
-  if (lastIndex < text.length) {
-    result.push(text.slice(lastIndex));
-  }
-
-  return <span>{result}</span>;
+  return (
+    <span>
+      {parts.map((p, i) =>
+        p.type === 'text' ? (
+          p.text
+        ) : (
+          <mark key={i} className="bg-[#CBF34D]/30 text-[#CBF34D] rounded-sm px-0.5 border-b border-[#CBF34D]/50 no-underline">
+            {p.text}
+          </mark>
+        ),
+      )}
+    </span>
+  );
 }
 
 function SeverityIndicator({ severity }: { severity: 'info' | 'warning' | 'critical' }) {

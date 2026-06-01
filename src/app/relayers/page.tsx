@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { useDebounce } from "../hooks/useDebounce";
-import { useTransformedCustomAddressField } from "@/app/hooks/useTransformedData";
+import { buildShortenedAddressMap } from "@/utils/addressUtils";
 import { RELAYERS_PAGE_STATUS_VARIANTS } from "@/lib/classNameVariants";
 import { Icon, ICON_IDS } from "@/components/icons";
 
@@ -63,14 +63,8 @@ export default function RelayersPage() {
 
   // Pre-compute shortened addresses on data ingestion to avoid render-time string slicing
   const shortenedAddressMap = useMemo<Record<string, string>>(
-    () =>
-      Object.fromEntries(
-        useTransformedCustomAddressField(MOCK_RELAYERS, "address").map((r) => [
-          r.id,
-          r.shortenedAddress,
-        ]),
-      ),
-    [],
+    () => buildShortenedAddressMap(MOCK_RELAYERS, 'id', 'address'),
+    [MOCK_RELAYERS],
   );
 
   return (

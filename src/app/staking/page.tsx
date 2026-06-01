@@ -2,8 +2,19 @@
 
 import React, { useState, useMemo } from 'react';
 import { useDebounce } from '../hooks/useDebounce';
-import { useTransformedCustomAddressField } from '@/app/hooks/useTransformedData';
-import { Icon, ICON_IDS } from '@/components/icons';
+import { buildShortenedAddressMap } from '@/utils/addressUtils';
+import { 
+  ShieldCheck, 
+  Coins, 
+  Percent, 
+  Flame, 
+  Search, 
+  RefreshCw, 
+  AlertTriangle, 
+  Gavel, 
+  TrendingUp, 
+  ArrowUpRight 
+} from 'lucide-react';
 import {
   getHealthBarColor,
   STAKER_SLASHING_NO_EVENTS,
@@ -41,10 +52,8 @@ export default function StakingPage() {
 
   // Pre-compute shortened addresses on data ingestion to avoid render-time string slicing
   const shortenedAddressMap = useMemo<Record<string, string>>(
-    () => Object.fromEntries(
-      useTransformedCustomAddressField(MOCK_STAKERS, 'operatorAddress').map(s => [s.id, s.shortenedAddress])
-    ),
-    []
+    () => buildShortenedAddressMap(MOCK_STAKERS, 'id', 'operatorAddress'),
+    [MOCK_STAKERS],
   );
 
   return (

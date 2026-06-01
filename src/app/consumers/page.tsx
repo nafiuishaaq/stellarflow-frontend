@@ -1,8 +1,21 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import { Icon, ICON_IDS } from '@/components/icons';
-import { useTransformedCustomAddressField } from '@/app/hooks/useTransformedData';
+import { 
+  Users, 
+  Key, 
+  Layers, 
+  CreditCard, 
+  Plus, 
+  Search, 
+  ExternalLink, 
+  CheckCircle2, 
+  RefreshCcw, 
+  Eye, 
+  EyeOff, 
+  Copy 
+} from 'lucide-react';
+import { withShortenedAddressField } from '@/utils/addressUtils';
 
 // --- Types ---
 interface Consumer {
@@ -29,8 +42,8 @@ export default function ConsumersPage() {
 
   // Pre-compute shortened addresses on data ingestion to avoid render-time string slicing
   const transformedConsumers = useMemo(
-    () => useTransformedCustomAddressField(MOCK_CONSUMERS, 'contractAddress'),
-    []
+    () => withShortenedAddressField(MOCK_CONSUMERS, 'contractAddress'),
+    [MOCK_CONSUMERS],
   );
 
   const handleCopy = () => {
