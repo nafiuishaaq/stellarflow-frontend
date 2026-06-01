@@ -3,6 +3,8 @@
 import React, { useEffect, useState, memo } from 'react'
 import { useSocket } from '../../hooks/useSocket'
 
+const CHART_HISTORY_LIMIT = 150;
+
 interface PriceData {
   symbol: string
   price: number
@@ -20,25 +22,28 @@ function LivePrices({ initialData }: any) {
 
   useEffect(() => {
     if (lastUpdate) {
-      // Update the specific asset in the data array
       setData(prevData => {
         const index = prevData.findIndex(p => p.symbol === lastUpdate.assetPair)
+        let next: PriceData[]
         if (index !== -1) {
-          const newData = [...prevData]
-          newData[index] = {
-            ...newData[index],
+          next = [...prevData]
+          next[index] = {
+            ...next[index],
             price: lastUpdate.price,
             timestamp: lastUpdate.timestamp,
           }
-          return newData
         } else {
-          // Add new asset if not found
-          return [...prevData, {
+          next = [...prevData, {
             symbol: lastUpdate.assetPair,
             price: lastUpdate.price,
             timestamp: lastUpdate.timestamp,
           }]
         }
+        // Cap to the last CHART_HISTORY_LIMIT entries and null-prune trailing
+        // slots to release memory registers back to the browser GC.
+        const windowed = next.slice(-CHART_HISTORY_LIMIT)
+        windowed.length = windowed.length
+        return windowed
       })
     }
   }, [lastUpdate])

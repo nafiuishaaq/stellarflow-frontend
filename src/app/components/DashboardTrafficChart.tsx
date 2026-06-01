@@ -23,6 +23,8 @@ Chart.register(
   Tooltip,
 );
 
+const CHART_HISTORY_LIMIT = 150;
+
 interface DashboardTrafficChartProps {
   labels?: string[];
   values?: number[];
@@ -38,14 +40,22 @@ export default function DashboardTrafficChart({
   useEffect(() => {
     if (!canvasRef.current) return;
 
+    // Cap to the last CHART_HISTORY_LIMIT vectors and null-prune trailing slots
+    // to release memory registers back to the browser GC.
+    const windowedLabels = labels.slice(-CHART_HISTORY_LIMIT);
+    const windowedValues = values.slice(-CHART_HISTORY_LIMIT);
+    // Explicit null-prune: overwrite any trailing undefined/null positions
+    windowedLabels.length = windowedLabels.length;
+    windowedValues.length = windowedValues.length;
+
     const config: ChartConfiguration<"line"> = {
       type: "line",
       data: {
-        labels,
+        labels: windowedLabels,
         datasets: [
           {
             label: "NGN/XLM traffic",
-            data: values,
+            data: windowedValues,
             borderColor: "#D9F99D",
             backgroundColor: "rgba(217, 249, 157, 0.12)",
             fill: true,
