@@ -5,7 +5,6 @@ import React, {
   useState,
   useCallback,
   memo,
-  useSyncExternalStore,
 } from "react";
 import { useRAFInterval } from "@/app/hooks/useRAFInterval";
 import { useInactivityDelay } from "@/app/hooks/useInactivityDelay";
@@ -40,30 +39,7 @@ interface PriceFeedCardProps {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function usePageVisibility(): boolean {
-  return useSyncExternalStore(
-    (onStoreChange) => {
-      if (typeof document === "undefined") return () => {};
-
-      const handleVisibilityChange = () => {
-        onStoreChange();
-      };
-
-      document.addEventListener("visibilitychange", handleVisibilityChange);
-      return () => {
-        document.removeEventListener(
-          "visibilitychange",
-          handleVisibilityChange,
-        );
-      };
-    },
-    () =>
-      typeof document === "undefined"
-        ? false
-        : document.visibilityState === "visible",
-    () => false,
-  );
-}
+import { usePageVisibility } from "../hooks/usePageVisibility";
 
 /**
  * Fetches the NGN/XLM price feed from the StellarFlow oracle API.
