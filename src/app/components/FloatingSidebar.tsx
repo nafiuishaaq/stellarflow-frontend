@@ -29,18 +29,13 @@ const FloatingSidebar = memo(() => {
   }, []);
 
   const handlePrefetch = useCallback((href: string) => {
-    if (!href) return;
-    if (href === pathname) return;
-
+    if (!href || href === pathname) return;
     try {
-      // Proactively trigger Next.js route prefetch to start asset compilation
       router.prefetch(href);
     } catch (err) {
-      // Swallow — prefetch is advisory and may throw in some environments
-      // eslint-disable-next-line no-console
       console.debug('Prefetch failed for', href, err);
     }
-  }, [router]);
+  }, [router, pathname]);
 
   return (
     <nav
