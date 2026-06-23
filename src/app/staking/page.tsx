@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useDebounce } from '../hooks/useDebounce';
 import { useRafThrottle } from '../hooks/useRafThrottle';
 import { useTransformedCustomAddressField } from '@/app/hooks/useTransformedData';
@@ -21,6 +21,7 @@ import {
   StakerTableRow,
   type StakerTableRecord,
 } from '@/app/components/staking/StakerTableRow';
+import { BondAllocationCalculator } from '@/app/components/staking/BondAllocationCalculator';
 
 // --- Types ---
 type StakerNode = StakerTableRecord;
@@ -37,6 +38,13 @@ export default function StakingPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 250);
   const throttledSetSearchTerm = useRafThrottle((v: string) => setSearchTerm(v));
+
+  const [confirmationMsg, setConfirmationMsg] = useState<string | null>(null);
+
+  const handleConfirm = useCallback((_allocations: Record<string, number>) => {
+    setConfirmationMsg('Allocation confirmed. Submitting to network…');
+    setTimeout(() => setConfirmationMsg(null), 2000);
+  }, []);
 
   const displayedStakers = useMemo(() => {
     const q = debouncedSearch.trim().toLowerCase();
@@ -121,6 +129,24 @@ export default function StakingPage() {
           </p>
         </div>
       </div>
+
+      {/* --- Confirmation Toast --- */}
+      {confirmationMsg !== null && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="mt-4 p-3 bg-emerald-950/30 border border-emerald-800/40 rounded-lg text-emerald-400 text-sm"
+        >
+          {confirmationMsg}
+        </div>
+      )}
+
+      {/* --- Bond Allocation Calculator --- */}
+      <BondAllocationCalculator
+        nodes={MOCK_STAKERS}
+        availableBalance={100_000}
+        onConfirm={handleConfirm}
+      />
 
     </div>
   );
