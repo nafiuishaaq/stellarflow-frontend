@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, memo } from 'react'
 import { useSocket } from '../../hooks/useSocket'
+import { ASSET_SYMBOL_LIST } from '@/config/assetSymbols'
 
 const CHART_HISTORY_LIMIT = 150;
 
@@ -16,7 +17,7 @@ function LivePrices({ initialData }: any) {
   
   // Subscribe to multiple asset updates
   const { isConnected, lastUpdate, error } = useSocket({
-    assetIds: ['NGN-XLM', 'USD-XLM', 'EUR-XLM'],
+    assetIds: [...ASSET_SYMBOL_LIST],
     enableDeltaUpdates: true,
   })
 

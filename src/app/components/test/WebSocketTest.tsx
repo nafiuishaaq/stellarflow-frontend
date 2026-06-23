@@ -4,6 +4,7 @@ import React from "react";
 import { useSocket } from "../../hooks/useSocket";
 import { useMounted } from "@/app/hooks/useMounted";
 import { Shimmer } from "@/components/skeletons/Shimmer";
+import { ASSET_SYMBOLS } from "@/config/assetSymbols";
 
 function WebSocketTestSkeleton() {
   return (
@@ -36,7 +37,7 @@ export default function WebSocketTest() {
     subscribeToAsset,
     unsubscribeFromAsset,
   } = useSocket({
-    assetIds: ["NGN-XLM"],
+    assetIds: [ASSET_SYMBOLS.NGN_XLM],
     enableDeltaUpdates: true,
   });
 
@@ -82,13 +83,13 @@ export default function WebSocketTest() {
 
         <div className="flex gap-2 mt-4">
           <button
-            onClick={() => subscribeToAsset("USD-XLM")}
+            onClick={() => subscribeToAsset(ASSET_SYMBOLS.USD_XLM)}
             className="rounded bg-blue-600 px-3 py-1 text-xs hover:bg-blue-700"
           >
             Subscribe USD-XLM
           </button>
           <button
-            onClick={() => unsubscribeFromAsset("USD-XLM")}
+            onClick={() => unsubscribeFromAsset(ASSET_SYMBOLS.USD_XLM)}
             className="rounded bg-orange-600 px-3 py-1 text-xs hover:bg-orange-700"
           >
             Unsubscribe USD-XLM
