@@ -13,7 +13,7 @@ export const DashboardTrafficChartSkeleton = React.memo(
           <Shimmer className="h-7 w-20 rounded-full" />
         </div>
 
-        <div className="h-[280px] rounded-[24px] border border-white/10 bg-[#0F172A] p-4">
+        <div className="aspect-[16/9] min-h-[280px] rounded-[24px] border border-white/10 bg-[#0F172A] p-4">
           <div className="flex h-full flex-col justify-between gap-4">
             <div className="space-y-2">
               <Shimmer className="h-3 w-36 rounded-md" />

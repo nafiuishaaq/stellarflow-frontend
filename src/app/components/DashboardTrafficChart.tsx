@@ -193,8 +193,8 @@ export default function DashboardTrafficChart({
   }, [series, processPointerMove]);
 
   return (
-    <div className="h-[280px] w-full">
-      <canvas ref={canvasRef} aria-label="NGN/XLM traffic chart" />
+    <div className="aspect-[16/9] min-h-[280px] w-full">
+      <canvas ref={canvasRef} className="h-full w-full" aria-label="NGN/XLM traffic chart" />
     </div>
   );
 }
