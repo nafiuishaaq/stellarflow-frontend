@@ -42,10 +42,25 @@ export default function StakingPage() {
 
   const [confirmationMsg, setConfirmationMsg] = useState<string | null>(null);
 
-  const handleConfirm = useCallback((_allocations: Record<string, number>) => {
-    setConfirmationMsg('Allocation confirmed. Submitting to network…');
-    setTimeout(() => setConfirmationMsg(null), 2000);
-  }, []);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleConfirm = useCallback(async (allocations: Record<string, number>) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    setConfirmationMsg('Loading secure environment...');
+    try {
+      const { submitTransaction } = await import('@/lib/transactionOps');
+      setConfirmationMsg('Allocation confirmed. Submitting to network…');
+      const txHash = await submitTransaction(allocations);
+      setConfirmationMsg(`Transaction successful: ${txHash}`);
+      setTimeout(() => setConfirmationMsg(null), 3000);
+    } catch (err) {
+      setConfirmationMsg('Transaction failed');
+      setTimeout(() => setConfirmationMsg(null), 2000);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [isSubmitting]);
 
   const displayedStakers = useMemo(() => {
     const q = debouncedSearch.trim().toLowerCase();
