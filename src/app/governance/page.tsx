@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Vote, 
   FilePlus, 
@@ -13,8 +13,9 @@ import {
   ChevronRight, 
   Wallet 
 } from 'lucide-react';
+import { subscribe } from '@/workers/masterTimerWorker';
 import { withShortenedAddressField } from '@/utils/addressUtils';
-import { useRAFInterval } from '@/app/hooks/useRAFInterval';
+
 import { useWallet, useWalletStatus, useWalletActions } from '@/app/hooks/useWalletState';
 import { Icon, ICON_IDS } from '@/components/icons';
 
@@ -93,15 +94,19 @@ export default function GovernancePage() {
     () => Object.fromEntries(MOCK_PROPOSALS.map(p => [p.id, p.endsInLedgers]))
   );
 
-  useRAFInterval(() => {
-    setLedgerCounts(prev => {
-      const next = { ...prev };
-      for (const id in next) {
-        if (next[id] > 0) next[id] -= 1;
-      }
-      return next;
+  // Subscribe to the central master timer (via requestAnimationFrame) to decrement ledger counts.
+  useEffect(() => {
+    const unsubscribe = subscribe(() => {
+      setLedgerCounts(prev => {
+        const next = { ...prev };
+        for (const id in next) {
+          if (next[id] > 0) next[id] -= 1;
+        }
+        return next;
+      });
     });
-  }, 5000);
+    return () => unsubscribe();
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-gray-100 p-8">
