@@ -6,3 +6,5 @@ export { PriceFeedCardSkeleton } from './PriceFeedCardSkeleton';
 export { DashboardTrafficChartSkeleton } from './DashboardTrafficChartSkeleton';
 export { StatsSkeleton } from './StatsSkeleton';
 export { AdminStatsSkeleton } from './AdminStatsSkeleton';
+export { ValidatorMetricsSkeleton } from './ValidatorMetricsSkeleton';
+export { ValidatorListSkeleton } from './ValidatorListSkeleton';

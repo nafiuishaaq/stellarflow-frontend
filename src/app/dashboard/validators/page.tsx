@@ -75,7 +75,6 @@ export default function ValidatorAuditPage() {
         </div>
       </div>
 
-      {/* Main Audit Log Table */}
       <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-5 shadow-2xl">
         <h2 className="text-lg font-semibold mb-4 text-neutral-200 flex items-center gap-2">
           <span>🛡️</span> Security Infrastructure Node Matrix
