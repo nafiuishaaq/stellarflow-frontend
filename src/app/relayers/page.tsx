@@ -15,8 +15,6 @@ import {
   Signal,
 } from 'lucide-react';
 import { RELAYERS_PAGE_STATUS_VARIANTS } from '@/lib/classNameVariants';
-import React, { useState, useMemo } from "react";
-import { useDebounce } from "../hooks/useDebounce";
 import { Icon, ICON_IDS } from "@/components/icons";
 import {
   RelayerManagementRow,

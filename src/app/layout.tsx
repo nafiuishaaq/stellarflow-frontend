@@ -5,6 +5,7 @@ import "./globals.css";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { ProgressBarProvider } from "./components/TopLoadingBar";
 import { UserProvider } from "./components/providers/UserProvider";
+import { SocketProvider } from "./components/providers/SocketProvider";
 import { WalletProvider } from "./components/providers/WalletProvider";
 import { QueryProvider } from "./components/providers/QueryProvider";
 import Script from "next/script";
@@ -13,14 +14,14 @@ import { SvgSprite } from "@/components/icons";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
-  display: "swap",
+  display: "optional",
   weight: ["400", "700"]
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
-  display: "swap",
+  display: "optional",
   weight: ["400", "700"]
 });
 
@@ -39,13 +40,7 @@ export default function RootLayout({
       <head>
         {/* Prevent background flash before next-themes hydrates */}
         <style>{`html { background-color: #0d1117; }`}</style>
-        {/* Preconnect to critical origins */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
+        {/* Preconnect to polyfill CDN (font files are self-hosted via next/font, so no Google Fonts preconnect needed) */}
         <link
           rel="preconnect"
           href="https://polyfill-library.fastly.dev"

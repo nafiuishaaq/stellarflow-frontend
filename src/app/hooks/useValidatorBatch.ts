@@ -25,9 +25,9 @@ export function useValidatorBatch(
   // Stable query key – addresses array is stringified to ensure proper caching.
   const queryKey = ['validators', addresses.sort().join(',')];
 
-  return useQuery<ValidatorMetric[], Error>(
+  return useQuery<ValidatorMetric[], Error>({
     queryKey,
-    async () => {
+    queryFn: async () => {
       if (addresses.length === 0) return [];
       const url = `/api/validators?ids=${addresses.map(encodeURIComponent).join(',')}`;
       const res = await fetch(url, {
@@ -41,13 +41,8 @@ export function useValidatorBatch(
       const data: ValidatorMetric[] = await res.json();
       return data;
     },
-    {
-      // Do not refetch on window focus to keep data stable during rapid UI interactions.
-      refetchOnWindowFocus: false,
-      // Keep previous data while loading new batched results.
-      keepPreviousData: true,
-      // Stale time can be tuned; using 30 seconds as a sensible default.
-      staleTime: 30_000,
-    },
-  );
+    refetchOnWindowFocus: false,
+    placeholderData: (previousData) => previousData,
+    staleTime: 30_000,
+  });
 }

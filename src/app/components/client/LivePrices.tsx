@@ -3,8 +3,7 @@
 import React, { useEffect, useState, memo } from 'react'
 import { useSocket } from '../../hooks/useSocket'
 import { ASSET_SYMBOL_LIST } from '@/config/assetSymbols'
-
-const CHART_HISTORY_LIMIT = 150;
+import { CHART_HISTORY_LIMIT } from '../../charts/chartCalculations'
 
 interface PriceData {
   symbol: string

@@ -41,6 +41,11 @@ const withPwaConfig = withPWA({
 const nextConfig: NextConfig = {
   reactCompiler: false,
   compress: true,
+  compiler: {
+    removeConsole: {
+      exclude: ["error", "warn"],
+    },
+  },
   productionBrowserSourceMaps: false,
   turbopack: {},
   images: {

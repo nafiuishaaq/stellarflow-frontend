@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   FileText, 
   Search, 
@@ -17,15 +17,17 @@ import {
   Cpu
 } from 'lucide-react';
 import { useRafThrottle } from '../hooks/useRafThrottle';
+import { useMounted } from '@/app/hooks/useMounted';
 import { Icon, ICON_IDS } from '@/components/icons';
 import { useXdrWorker } from './useXdrWorker';
-import { buildHighlightedParts } from '@/utils/textUtils';
+import { buildHighlightedParts, HighlightPart } from '@/utils/textUtils';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { LogEntry, FilteredLogResult } from './types';
+const SEARCH_FIELDS: (keyof LogEntry)[] = ['message', 'actor', 'txHash'];
+
+import { LogEntry, FilteredLogResult, FuseMatch, XdrFields } from './types';
 import { readIndexedLogs, writeIndexedLogs } from './indexedLogStorage';
-import { LogEntry, FilteredLogResult, FuseMatch } from './types';
 
 // --- Mock Data ---
 const MOCK_LOGS: LogEntry[] = [
@@ -33,15 +35,6 @@ const MOCK_LOGS: LogEntry[] = [
   { id: '102', timestamp: '2026-04-28 12:35:12', type: 'security', severity: 'critical', message: 'Unauthorized API attempt detected from IP 192.168.1.1', actor: 'System Guard' },
   { id: '103', timestamp: '2026-04-28 12:30:45', type: 'system', severity: 'warning', message: 'Regional Failover: Switching to Frankfurt Secondary', actor: 'Network Orchestrator' },
   { id: '104', timestamp: '2026-04-28 12:20:10', type: 'transaction', severity: 'info', message: 'XDR: BBBBBEEEEEEFFFFF...', actor: 'Binance Pan-Africa', txHash: '0xdef...456' },
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<'all'|'info'|'warning'|'critical'>('all');
-  const [filteredResults, setFilteredResults] = useState<FilteredLogResult[]>(
-    MOCK_LOGS.map((l) => ({ item: l, matches: [] }))
-  );
-  const [isSearching, setIsSearching] = useState(false);
-
-  const throttledSetSearchQuery = useRafThrottle((v: string) => setSearchQuery(v));
-  const throttledSetFilter = useRafThrottle((v: string) => setFilter(v));
 ];
 
 function matchesSeverity(log: LogEntry, severity: "all" | LogEntry["severity"]) {
@@ -162,6 +155,9 @@ export default function LogsPage() {
   const parentRef = useRef<HTMLDivElement | null>(null);
   const workerRef = useRef<Worker | null>(null);
   const { batchDecode, decoding: xdrDecoding } = useXdrWorker();
+
+  const throttledSetSearchQuery = useRafThrottle((v: string) => setSearchQuery(v));
+  const throttledSetFilter = useRafThrottle((v: "all" | LogEntry["severity"]) => setFilter(v));
 
   useEffect(() => {
     if (!mounted) return;
@@ -347,25 +343,13 @@ export default function LogsPage() {
       {/* --- Filter & Search Bar --- */}
       <div className="bg-[#161b22] border border-gray-800 rounded-xl p-4 mb-6 flex flex-col md:flex-row gap-4 items-center">
         <div className="relative flex-1 w-full">
-          <Search className={`absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${isSearching ? 'text-blue-500 animate-pulse' : 'text-gray-500'}`} size={18} />
-      <input
-        type="text"
-        placeholder="Filter logs by message, actor, or hash..."
-        value={searchQuery}
-        onChange={(e) => throttledSetSearchQuery(e.target.value)}
-        className="w-full bg-[#0d1117] border border-gray-700 rounded-md py-2 pl-10 pr-4 text-sm focus:outline-none focus:border-blue-500 transition-colors"
-      />
-        </div>
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          <Filter size={18} className="text-gray-500" />
-          <select
-          <Icon id={ICON_IDS.search} size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${isSearching ? 'text-blue-500 animate-pulse' : 'text-gray-500'}`} />
-          <input 
-            type="text" 
-            placeholder="Filter logs by message, actor, or hash..." 
+          <Icon id={ICON_IDS.search} size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${isSearching ? 'text-blue-500 animate-pulse' : 'text-slate-500'}`} />
+          <input
+            type="text"
+            placeholder="Filter logs by message, actor, or hash..."
             value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            className="w-full rounded-md border border-gray-700 bg-[#0d1117] py-2 pl-10 pr-4 text-sm outline-none transition-colors focus:border-blue-500"
+            onChange={(e) => throttledSetSearchQuery(e.target.value)}
+            className="w-full bg-[#0d1117] border border-gray-700 rounded-md py-2 pl-10 pr-4 text-sm focus:outline-none focus:border-blue-500 transition-colors"
           />
         </div>
 
@@ -373,6 +357,7 @@ export default function LogsPage() {
           <Icon id={ICON_IDS.filter} size={18} className="text-gray-500" />
           <select 
             className="bg-[#0d1117] border border-gray-700 rounded-md py-2 px-4 text-sm focus:outline-none"
+            value={filter}
             onChange={(e) => throttledSetFilter(e.target.value as any)}
           >
             <option value="all">All Severities</option>

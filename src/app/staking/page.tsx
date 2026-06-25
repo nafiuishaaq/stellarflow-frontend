@@ -22,6 +22,7 @@ import {
   type StakerTableRecord,
 } from '@/app/components/staking/StakerTableRow';
 import { BondAllocationCalculator } from '@/app/components/staking/BondAllocationCalculator';
+import { Icon, ICON_IDS } from '@/components/icons';
 
 // --- Types ---
 type StakerNode = StakerTableRecord;

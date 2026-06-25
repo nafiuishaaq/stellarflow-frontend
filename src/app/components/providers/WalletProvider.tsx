@@ -16,14 +16,26 @@ export interface WalletState {
   lastCheckedAt: number;
 }
 
-interface WalletContextType {
+// ---------------------------------------------------------------------------
+// Three independent contexts — each slice re-renders only its own consumers.
+// ---------------------------------------------------------------------------
+
+interface WalletStateContextType {
   wallet: WalletState | null;
+}
+
+interface WalletStatusContextType {
   isChecking: boolean;
   error: string | null;
+}
+
+interface WalletActionsContextType {
   refreshWalletState: () => Promise<WalletState | null>;
 }
 
-const WalletContext = createContext<WalletContextType | null>(null);
+const WalletStateContext = createContext<WalletStateContextType | null>(null);
+const WalletStatusContext = createContext<WalletStatusContextType | null>(null);
+const WalletActionsContext = createContext<WalletActionsContextType | null>(null);
 
 const CACHE_TTL = 2500;
 let cache: { expiresAt: number; value: WalletState | null } | null = null;
@@ -132,23 +144,91 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     refreshWalletState();
   }, [mounted, refreshWalletState]);
 
-  const value = useMemo(
-    () => ({ wallet, isChecking, error, refreshWalletState }),
-    [wallet, isChecking, error, refreshWalletState],
+  const stateValue = useMemo<WalletStateContextType>(
+    () => ({ wallet }),
+    [wallet],
+  );
+
+  const statusValue = useMemo<WalletStatusContextType>(
+    () => ({ isChecking, error }),
+    [isChecking, error],
+  );
+
+  const actionsValue = useMemo<WalletActionsContextType>(
+    () => ({ refreshWalletState }),
+    [refreshWalletState],
   );
 
   // Serve static placeholder during SSR to prevent hydration mismatch
   if (!mounted) {
-    return <WalletContext.Provider value={{ wallet: null, isChecking: false, error: null, refreshWalletState }}>{children}</WalletContext.Provider>;
+    const placeholderState: WalletStateContextType = { wallet: null };
+    const placeholderStatus: WalletStatusContextType = { isChecking: false, error: null };
+    const placeholderActions: WalletActionsContextType = { refreshWalletState: () => Promise.resolve(null) };
+
+    return (
+      <WalletStateContext.Provider value={placeholderState}>
+        <WalletStatusContext.Provider value={placeholderStatus}>
+          <WalletActionsContext.Provider value={placeholderActions}>
+            {children}
+          </WalletActionsContext.Provider>
+        </WalletStatusContext.Provider>
+      </WalletStateContext.Provider>
+    );
   }
 
-  return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
+  return (
+    <WalletStateContext.Provider value={stateValue}>
+      <WalletStatusContext.Provider value={statusValue}>
+        <WalletActionsContext.Provider value={actionsValue}>
+          {children}
+        </WalletActionsContext.Provider>
+      </WalletStatusContext.Provider>
+    </WalletStateContext.Provider>
+  );
 }
 
-export function useWalletState() {
-  const context = useContext(WalletContext);
-  if (!context) {
-    throw new Error('useWalletState must be used within a WalletProvider');
+// ---------------------------------------------------------------------------
+// Granular consumer hooks
+// ---------------------------------------------------------------------------
+
+export function useWallet(): WalletStateContextType {
+  const ctx = useContext(WalletStateContext);
+  if (!ctx) {
+    throw new Error('useWallet must be used within a WalletProvider');
   }
-  return context;
+  return ctx;
+}
+
+export function useWalletStatus(): WalletStatusContextType {
+  const ctx = useContext(WalletStatusContext);
+  if (!ctx) {
+    throw new Error('useWalletStatus must be used within a WalletProvider');
+  }
+  return ctx;
+}
+
+export function useWalletActions(): WalletActionsContextType {
+  const ctx = useContext(WalletActionsContext);
+  if (!ctx) {
+    throw new Error('useWalletActions must be used within a WalletProvider');
+  }
+  return ctx;
+}
+
+/**
+ * @deprecated Use the granular hooks instead:
+ *   - `useWallet()`       for wallet state keys
+ *   - `useWalletStatus()`  for isChecking / error
+ *   - `useWalletActions()` for refreshWalletState callback
+ */
+export function useWalletState() {
+  const state = useWallet();
+  const status = useWalletStatus();
+  const actions = useWalletActions();
+  return {
+    wallet: state.wallet,
+    isChecking: status.isChecking,
+    error: status.error,
+    refreshWalletState: actions.refreshWalletState,
+  };
 }

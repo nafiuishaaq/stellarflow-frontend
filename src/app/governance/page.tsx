@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Vote, 
   FilePlus, 
@@ -13,9 +13,11 @@ import {
   ChevronRight, 
   Wallet 
 } from 'lucide-react';
+import { subscribe } from '@/workers/masterTimerWorker';
 import { withShortenedAddressField } from '@/utils/addressUtils';
-import { useRAFInterval } from '@/app/hooks/useRAFInterval';
-import { useWalletState } from '@/app/hooks/useWalletState';
+
+import { useWallet, useWalletStatus, useWalletActions } from '@/app/hooks/useWalletState';
+import { Icon, ICON_IDS } from '@/components/icons';
 
 // --- Types ---
 interface Proposal {
@@ -37,15 +39,49 @@ const MOCK_PROPOSALS: Proposal[] = [
   { id: 'SFP-09', title: 'Increase Relayer Missed-Heartbeat Penalty Weight by 2%', proposer: 'GCXXVHZLKMNPQRSXYZABCDEFGHIJKLM7766', status: 'Defeated', votesFor: 110000, votesAgainst: 920000, quorumThreshold: 50, endsInLedgers: 0 },
 ];
 
-export default function GovernancePage() {
-  const [activeTab, setActiveTab] = useState<'all' | 'active' | 'archived'>('all');
-  const { wallet, isChecking, refreshWalletState } = useWalletState();
+const GovernanceWalletControl = React.memo(function GovernanceWalletControl() {
+  const { wallet } = useWallet();
+  const { isChecking } = useWalletStatus();
+  const { refreshWalletState } = useWalletActions();
 
   const walletStatus = wallet?.connected
     ? wallet.publicKey
       ? `${wallet.publicKey.slice(0, 4)}...${wallet.publicKey.slice(-4)}`
       : 'Connected'
     : 'No wallet connected';
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div>
+          <p className="text-sm text-gray-500 mb-1">Admin / Consensus</p>
+          <h1 className="text-3xl font-bold tracking-tight">Governance & Proposals</h1>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            onClick={() => refreshWalletState()}
+            disabled={isChecking}
+            className="flex items-center gap-2 bg-[#161b22] border border-gray-800 hover:bg-gray-800 text-gray-300 px-4 py-2 rounded-lg transition-all text-sm font-medium"
+          >
+            <Icon id={ICON_IDS.wallet} size={16} className="text-purple-400" />
+            {wallet?.connected ? walletStatus : 'Connect Freighter Wallet'}
+          </button>
+          <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-all text-sm font-medium">
+            <Icon id={ICON_IDS.filePlus} size={16} />
+            Submit New Proposal
+          </button>
+        </div>
+      </div>
+
+      <div className="mb-3 text-sm text-gray-400">
+        Active wallet status: <span className="text-white">{walletStatus}</span>
+      </div>
+    </div>
+  );
+});
+
+export default function GovernancePage() {
+  const [activeTab, setActiveTab] = useState<'all' | 'active' | 'archived'>('all');
 
   // Pre-compute shortened addresses on data ingestion to avoid render-time string slicing
   const transformedProposals = useMemo(
@@ -58,48 +94,25 @@ export default function GovernancePage() {
     () => Object.fromEntries(MOCK_PROPOSALS.map(p => [p.id, p.endsInLedgers]))
   );
 
-  useRAFInterval(() => {
-    setLedgerCounts(prev => {
-      const next = { ...prev };
-      for (const id in next) {
-        if (next[id] > 0) next[id] -= 1;
-      }
-      return next;
+  // Subscribe to the central master timer (via requestAnimationFrame) to decrement ledger counts.
+  useEffect(() => {
+    const unsubscribe = subscribe(() => {
+      setLedgerCounts(prev => {
+        const next = { ...prev };
+        for (const id in next) {
+          if (next[id] > 0) next[id] -= 1;
+        }
+        return next;
+      });
     });
-  }, 5000);
+    return () => unsubscribe();
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-gray-100 p-8">
       
       {/* --- Header Section --- */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-        <div>
-          <p className="text-sm text-gray-500 mb-1">Admin / Consensus</p>
-          <h1 className="text-3xl font-bold tracking-tight">Governance & Proposals</h1>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <button
-            onClick={() => refreshWalletState()}
-            disabled={isChecking}
-            className="flex items-center gap-2 bg-[#161b22] border border-gray-800 hover:bg-gray-800 text-gray-300 px-4 py-2 rounded-lg transition-all text-sm font-medium"
-          >
-            <Wallet size={16} className="text-purple-400" />
-            {wallet?.connected ? walletStatus : 'Connect Freighter Wallet'}
-        <div className="flex gap-3">
-          <button className="flex items-center gap-2 bg-[#161b22] border border-gray-800 hover:bg-gray-800 text-gray-300 px-4 py-2 rounded-lg transition-all text-sm font-medium">
-            <Icon id={ICON_IDS.wallet} size={16} className="text-purple-400" />
-            Connect Freighter Wallet
-          </button>
-          <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-all text-sm font-medium">
-            <Icon id={ICON_IDS.filePlus} size={16} />
-            Submit New Proposal
-          </button>
-        </div>
-      </div>
-
-      <div className="mb-3 text-sm text-gray-400">
-        Active wallet status: <span className="text-white">{walletStatus}</span>
-      </div>
+      <GovernanceWalletControl />
       {/* --- Consensus Statistics Rows --- */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <StatCard title="Total Staking Power" value="2.85M SF" icon={<Icon id={ICON_IDS.vote} size={20} className="text-blue-400" />} subtitle="Active voting weights" />

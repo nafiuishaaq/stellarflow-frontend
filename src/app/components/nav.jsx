@@ -6,14 +6,13 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { Icon, ICON_IDS } from "@/components/icons";
 import { useProgressBar } from "./TopLoadingBar";
-import { useWalletState } from "../hooks/useWalletState";
+import { useWallet, useWalletStatus, useWalletActions } from "../hooks/useWalletState";
 
-const Nav = memo(() => {
-  const hasAnomaly = true;
-  const router = useRouter();
-  const pathname = usePathname();
+const WalletConnectButton = memo(() => {
+  const { wallet } = useWallet();
+  const { isChecking } = useWalletStatus();
+  const { refreshWalletState } = useWalletActions();
   const { start, done } = useProgressBar();
-  const { wallet, isChecking, refreshWalletState } = useWalletState();
 
   const walletLabel = wallet?.connected
     ? wallet.publicKey
@@ -32,6 +31,24 @@ const Nav = memo(() => {
       alert("No active Stellar wallet detected. Please connect your extension.");
     }
   }, [refreshWalletState, start, done]);
+
+  return (
+    <button
+      onClick={handleConnectWallet}
+      disabled={isChecking}
+      className="wallet-btn group flex min-w-0 items-center gap-2 px-3 sm:gap-2.5 sm:px-4 py-2 rounded-2xl font-semibold text-sm sm:text-base transition-all duration-300 hover:shadow-xl active:scale-95 whitespace-nowrap"
+    >
+      <Icon id={ICON_IDS.wallet} size={18} className="transition-transform group-hover:rotate-12" />
+      <span className="truncate">{walletLabel}</span>
+    </button>
+  );
+});
+WalletConnectButton.displayName = "WalletConnectButton";
+
+const Nav = memo(() => {
+  const hasAnomaly = true;
+  const router = useRouter();
+  const pathname = usePathname();
 
   return (
     <main className="sticky top-0 z-50 bg-zinc-950 border-b border-zinc-800">
@@ -59,18 +76,7 @@ const Nav = memo(() => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={handleConnectWallet}
-            disabled={isChecking}
-            className="wallet-btn group flex min-w-0 items-center gap-2 px-3 sm:gap-2.5 sm:px-4 py-2 rounded-2xl font-semibold text-sm sm:text-base transition-all duration-300 hover:shadow-xl active:scale-95 whitespace-nowrap"
-          >
-            <Wallet className="w-5 h-5 transition-transform group-hover:rotate-12" />
-            <span className="truncate">{walletLabel}</span>
-            <Icon id={ICON_IDS.wallet} size={18} className="transition-transform group-hover:rotate-12" />
-            <span className="truncate">
-              Connect <span className="hidden md:inline">Wallet</span>
-            </span>
-          </button>
+          <WalletConnectButton />
 
           <button
             aria-label="System anomaly alerts"
