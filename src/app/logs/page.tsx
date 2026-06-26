@@ -247,22 +247,23 @@ export default function LogsPage() {
       item: log,
       matches: buildMatches(log, normalizedQuery),
     }));
-  }, [activeLogs, filter, searchQuery]);
+  }, [logs, storageReady, filter, searchQuery]);
 
   useEffect(() => {
     if (!storageReady) return;
 
     const timer = window.setTimeout(() => {
       if (!workerRef.current) return;
+      const currentLogs = storageReady ? logs : MOCK_LOGS;
       setIsSearching(Boolean(searchQuery.trim()));
       workerRef.current.postMessage({
         type: "SEARCH",
-        payload: { query: searchQuery, logs: activeLogs },
+        payload: { query: searchQuery, logs: currentLogs },
       });
     }, 250);
 
     return () => window.clearTimeout(timer);
-  }, [activeLogs, searchQuery, storageReady]);
+  }, [logs, searchQuery, storageReady]);
 
   const rowVirtualizer = useVirtualizer({
     count: filteredResults.length,
@@ -384,7 +385,7 @@ export default function LogsPage() {
           )}
         </AnimatePresence>
 
-        <div className="grid grid-cols-[140px_120px_100px_1fr_150px_120px] border-b border-gray-800 bg-[#0d1117]/80 text-[10px] uppercase tracking-wider text-gray-500 backdrop-blur-md">
+        <div className="grid grid-cols-[140px_120px_100px_1fr_150px_120px] border-b border-gray-800 bg-[#0d1117] text-[10px] uppercase tracking-wider text-gray-500">
           <div className="px-6 py-4 font-medium">Timestamp</div>
           <div className="px-6 py-4 font-medium">Type</div>
           <div className="px-6 py-4 font-medium">Severity</div>

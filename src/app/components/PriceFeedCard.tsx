@@ -15,8 +15,9 @@ import { useDebounce } from "../hooks/useDebounce";
 import { useRafThrottle } from "../hooks/useRafThrottle";
 import { useErrorTimeout } from "../hooks/useErrorTimeout";
 import { useSocketConnection, useSocketData } from "./providers/SocketProvider";
-import { PriceFeedCardSkeleton } from "@/components/skeletons/PriceFeedCardSkeleton";
 import { Shimmer } from "@/components/skeletons/Shimmer";
+import { getCachedHistory, getCachedHistorySync, setCachedHistory } from "../lib/historySync";
+import { PriceFeedCardSkeleton, Shimmer } from "@/components/skeletons";
 import { useMounted } from "@/app/hooks/useMounted";
 import { POLLING_INTERVALS, INACTIVITY_CONFIG } from "@/config/cacheConfig";
 
@@ -116,6 +117,9 @@ const PriceFeedCard: React.FC<PriceFeedCardProps> = ({
   refreshInterval = POLLING_INTERVALS.MEDIUM_INTERVAL,
   enableWebSocket = true,
 }) => {
+  const [data, setData] = useState<PriceFeedData | null>(() => {
+    return getCachedHistorySync<PriceFeedData>("price-feed:ngn-xlm");
+  });
   const mounted = useMounted();
   const [data, setData] = useState<PriceFeedData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -151,7 +155,16 @@ const PriceFeedCard: React.FC<PriceFeedCardProps> = ({
       setError(null);
 
       try {
+        const historyKey = "price-feed:ngn-xlm";
+        const cached = await getCachedHistory<PriceFeedData>(historyKey);
+        if (cached && !manual) {
+          setData(cached);
+          setLastRefresh(new Date(cached.last_updated));
+          setLoading(false);
+        }
+
         const feed = await fetchNgnXlmFeed();
+        await setCachedHistory(historyKey, feed);
         setData(feed);
         setLastRefresh(new Date());
       } catch (err) {
@@ -171,11 +184,13 @@ const PriceFeedCard: React.FC<PriceFeedCardProps> = ({
   // Using a functional setData updater means we read `prev` (current state)
   // instead of closing over `data` — so `data` is NOT a dependency and the
   // effect does not re-run after every state write, breaking the render cycle.
+  
   useEffect(() => {
     if (!mounted) return;
 
     if (!wsUpdate || !enableWebSocket || !isPageVisible) return;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Necessary to sync WebSocket data with local state
     setData((prev: PriceFeedData | null) => ({
       price: wsUpdate.price || prev?.price || 0,
       // Reset 24 h change indicator when a fresh price arrives.
@@ -194,6 +209,7 @@ const PriceFeedCard: React.FC<PriceFeedCardProps> = ({
     setLastRefresh(new Date());
     setLoading(false);
     setError(null);
+  }, [wsUpdate, enableWebSocket, isPageVisible, setError]); // `data` intentionally omitted — accessed via functional updater
   }, [wsUpdate, enableWebSocket, isPageVisible, mounted, setError]); // `data` intentionally omitted — accessed via functional updater
 
   // Handle WebSocket errors
@@ -203,11 +219,20 @@ const PriceFeedCard: React.FC<PriceFeedCardProps> = ({
     if (wsError && enableWebSocket) {
       setError(`WebSocket error: ${wsError}`);
     }
+  }, [wsError, enableWebSocket, setError]);
   }, [wsError, enableWebSocket, mounted, setError]);
 
   // Initial fetch + fallback polling (only when WebSocket is disabled or disconnected)
   const pollingActive = mounted && isPageVisible && (!enableWebSocket || !isConnected);
   useEffect(() => {
+    if (!pollingActive) return;
+
+    const timer = window.setTimeout(() => {
+      void load();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [pollingActive, load]);
     if (!mounted) return;
     if (!pollingActive) return;
 
@@ -353,10 +378,10 @@ const PriceFeedCard: React.FC<PriceFeedCardProps> = ({
 
       {/* ── 24h stats row ── */}
       {!loading && !error && data && (
-        <div className="relative grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-[#1B2A3B] pt-4">
+        <div className="relative grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-[#1B2A3B] pt-4 text-left">
           {/* High */}
-          <div className="min-w-0 flex flex-col gap-0.5 node-status-cell">
-            <span className="text-[9px] font-semibold uppercase tracking-widest text-gray-600">
+          <div className="min-w-0 node-status-cell">
+            <span className="block text-[9px] font-semibold uppercase tracking-widest text-gray-600 mb-0.5">
               24h High
             </span>
             <span className="text-xs font-bold text-emerald-400 numeric-value">
@@ -365,8 +390,8 @@ const PriceFeedCard: React.FC<PriceFeedCardProps> = ({
           </div>
 
           {/* Low */}
-          <div className="flex flex-col gap-0.5 node-status-cell">
-            <span className="text-[9px] font-semibold uppercase tracking-widest text-gray-600">
+          <div className="node-status-cell">
+            <span className="block text-[9px] font-semibold uppercase tracking-widest text-gray-600 mb-0.5">
               24h Low
             </span>
             <span className="text-xs font-bold text-rose-400 numeric-value">
@@ -375,8 +400,8 @@ const PriceFeedCard: React.FC<PriceFeedCardProps> = ({
           </div>
 
           {/* Volume */}
-          <div className="flex flex-col gap-0.5 node-status-cell">
-            <span className="text-[9px] font-semibold uppercase tracking-widest text-gray-600">
+          <div className="node-status-cell">
+            <span className="block text-[9px] font-semibold uppercase tracking-widest text-gray-600 mb-0.5">
               Volume
             </span>
             <span className="text-xs font-bold text-gray-300 numeric-value">
