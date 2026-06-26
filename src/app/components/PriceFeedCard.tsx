@@ -16,6 +16,7 @@ import { useErrorTimeout } from "../hooks/useErrorTimeout";
 import { useSocketConnection, useSocketData } from "./providers/SocketProvider";
 import { PriceFeedCardSkeleton, Shimmer } from "@/components/skeletons";
 import { useMounted } from "@/app/hooks/useMounted";
+import { POLLING_INTERVALS, INACTIVITY_CONFIG } from "@/config/cacheConfig";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -29,7 +30,11 @@ interface PriceFeedData {
 }
 
 interface PriceFeedCardProps {
-  /** Polling interval in milliseconds. Defaults to 30 000 (30 s). */
+  /**
+   * Polling interval in milliseconds.
+   * Defaults to 30_000 (30s), enforcing minimum 5-second thresholds.
+   * Automatically scaled by 5x multiplier when user is inactive.
+   */
   refreshInterval?: number;
   /** Asset ID for WebSocket delta updates. Defaults to 'NGN-XLM'. */
   assetId?: string;
@@ -106,7 +111,7 @@ function formatTime(iso: string): string {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const PriceFeedCard: React.FC<PriceFeedCardProps> = ({
-  refreshInterval = 30_000,
+  refreshInterval = POLLING_INTERVALS.MEDIUM_INTERVAL,
   enableWebSocket = true,
 }) => {
   const mounted = useMounted();
@@ -128,10 +133,11 @@ const PriceFeedCard: React.FC<PriceFeedCardProps> = ({
   const isPageVisible = usePageVisibility();
 
   // Adaptive poll delay — extends the polling interval when the user has been
-  // inactive for more than 3 minutes, reducing unnecessary network RPC load.
+  // inactive beyond the threshold, reducing unnecessary network RPC load.
+  // Uses centralized inactivity config to ensure consistent behavior across the app.
   const { delayMultiplier } = useInactivityDelay({
-    inactivityThreshold: 3 * 60 * 1000,
-    inactiveMultiplier: 5,
+    inactivityThreshold: INACTIVITY_CONFIG.threshold,
+    inactiveMultiplier: INACTIVITY_CONFIG.inactiveMultiplier,
   });
 
   const load = useCallback(
