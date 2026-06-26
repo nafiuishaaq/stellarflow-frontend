@@ -1,7 +1,14 @@
 "use client";
 
-import React, { useMemo } from "react";
-import { Shimmer } from "@/components/skeletons";
+import React, { useEffect, useMemo, useState } from "react";
+import { Shimmer } from "@/components/skeletons/Shimmer";
+import { useChartWorker } from "../charts/useChartWorker";
+import {
+  computeSparklinePoints,
+  CHART_HISTORY_LIMIT,
+} from "../charts/chartCalculations";
+
+const SPARKLINE_GEOMETRY = { width: 120, height: 32, limit: CHART_HISTORY_LIMIT };
 
 interface RateSparklineCardProps {
   currency: string;
@@ -16,26 +23,30 @@ const MiniSparkline = React.memo(function MiniSparkline({
 }: {
   data: number[];
 }) {
-  const points = useMemo(() => {
-    const width = 120;
-    const height = 32;
+  const { computeSparkline } = useChartWorker();
+  const id = React.useId();
 
-    if (data.length < 2) {
-      return "";
-    }
+  // Seed synchronously from the shared module so the line is correct on first
+  // paint, then offload recomputation to the worker as the data stream updates.
+  const seed = useMemo(
+    () => computeSparklinePoints(data, SPARKLINE_GEOMETRY),
+    [data],
+  );
+  const [points, setPoints] = useState(seed);
 
-    const min = Math.min(...data);
-    const max = Math.max(...data);
-    const range = max - min || 1;
-
-    return data
-      .map((value, index) => {
-        const x = (index / (data.length - 1)) * width;
-        const y = height - ((value - min) / range) * height;
-        return `${x},${y}`;
+  useEffect(() => {
+    let cancelled = false;
+    computeSparkline(id, data, SPARKLINE_GEOMETRY)
+      .then((next) => {
+        if (!cancelled) setPoints(next);
       })
-      .join(" ");
-  }, [data]);
+      .catch(() => {
+        // Keep the synchronous seed if the worker is unavailable.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [data, id, computeSparkline, seed]);
 
   return (
     <svg
@@ -84,7 +95,10 @@ const RateSparklineCard: React.FC<RateSparklineCardProps> = ({
 
   if (loading) {
     return (
-      <div className="aspect-[16/10] rounded-3xl border border-[#1B2A3B] bg-[#08111E] p-5 shadow-lg shadow-black/20">
+      <div
+        style={{ contain: "paint layout" }}
+        className="aspect-[16/10] rounded-3xl border border-[#1B2A3B] bg-[#08111E] p-5 shadow-lg shadow-black/20"
+      >
         <div className="flex h-full flex-col justify-between">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
@@ -104,7 +118,10 @@ const RateSparklineCard: React.FC<RateSparklineCardProps> = ({
   }
 
   return (
-    <div className="aspect-[16/10] rounded-3xl border border-[#1B2A3B] bg-[#08111E] p-5 shadow-lg shadow-black/20 transition duration-300 hover:border-[#39FF14]/40">
+    <div
+      style={{ contain: "paint layout" }}
+      className="aspect-[16/10] rounded-3xl border border-[#1B2A3B] bg-[#08111E] p-5 shadow-lg shadow-black/20 transition duration-300 hover:border-[#39FF14]/40"
+    >
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-gray-500">
