@@ -169,11 +169,13 @@ const PriceFeedCard: React.FC<PriceFeedCardProps> = ({
   // Using a functional setData updater means we read `prev` (current state)
   // instead of closing over `data` — so `data` is NOT a dependency and the
   // effect does not re-run after every state write, breaking the render cycle.
+  
   useEffect(() => {
     if (!mounted) return;
 
     if (!wsUpdate || !enableWebSocket || !isPageVisible) return;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Necessary to sync WebSocket data with local state
     setData((prev: PriceFeedData | null) => ({
       price: wsUpdate.price || prev?.price || 0,
       // Reset 24 h change indicator when a fresh price arrives.
