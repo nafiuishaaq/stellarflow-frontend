@@ -18,7 +18,8 @@ import {
 } from 'lucide-react';
 import { useRafThrottle } from '../hooks/useRafThrottle';
 import { useMounted } from '@/app/hooks/useMounted';
-import { Icon, ICON_IDS } from '@/components/icons';
+import Icon from '@/components/icons/Icon';
+import { ICON_IDS } from '@/components/icons/iconIds';
 import { useXdrWorker } from './useXdrWorker';
 import { buildHighlightedParts, HighlightPart } from '@/utils/textUtils';
 import { useVirtualizer } from '@tanstack/react-virtual';

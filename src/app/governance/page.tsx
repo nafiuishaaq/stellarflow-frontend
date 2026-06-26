@@ -18,7 +18,8 @@ import { withShortenedAddressField } from '@/utils/addressUtils';
 import { useIsHydrated } from '@/app/hooks/useIsHydrated';
 
 import { useWallet, useWalletStatus, useWalletActions } from '@/app/hooks/useWalletState';
-import { Icon, ICON_IDS } from '@/components/icons';
+import Icon from '@/components/icons/Icon';
+import { ICON_IDS } from '@/components/icons/iconIds';
 
 // --- Types ---
 interface Proposal {

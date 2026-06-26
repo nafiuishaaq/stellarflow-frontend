@@ -4,7 +4,8 @@ import React, { memo, useCallback } from "react";
 import OptimizedImage from "./OptimizedImage";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { Icon, ICON_IDS } from "@/components/icons";
+import Icon from "@/components/icons/Icon";
+import { ICON_IDS } from "@/components/icons/iconIds";
 import { useProgressBar } from "./TopLoadingBar";
 import { useWallet, useWalletStatus, useWalletActions } from "../hooks/useWalletState";
 

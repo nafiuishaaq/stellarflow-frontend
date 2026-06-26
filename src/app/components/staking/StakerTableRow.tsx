@@ -5,7 +5,8 @@ import {
   STAKER_SLASHING_NO_EVENTS,
   STAKER_SLASHING_WITH_EVENTS,
 } from '@/lib/classNameVariants';
-import { Icon, ICON_IDS } from '@/components/icons';
+import Icon from '@/components/icons/Icon';
+import { ICON_IDS } from '@/components/icons/iconIds';
 
 /**
  * Core data structure for a single staker node row in the matrix/grid table.

@@ -9,7 +9,7 @@ import { SocketProvider } from "./components/providers/SocketProvider";
 import { WalletProvider } from "./components/providers/WalletProvider";
 import { QueryProvider } from "./components/providers/QueryProvider";
 import Script from "next/script";
-import { SvgSprite } from "@/components/icons";
+import SvgSprite from "@/components/icons/SvgSprite";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

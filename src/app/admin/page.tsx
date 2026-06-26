@@ -1,5 +1,5 @@
 import React, { Suspense } from "react";
-import { AdminStatsSkeleton } from "@/components/skeletons";
+import { AdminStatsSkeleton } from "@/components/skeletons/AdminStatsSkeleton";
 import AdminTabBar from "@/app/components/AdminTabBar";
 import SystemStats from "@/app/components/SystemStats";
 import ModularStatsCard from "@/app/components/ModularStatsCard";

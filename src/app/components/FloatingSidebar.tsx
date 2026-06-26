@@ -3,8 +3,9 @@
 import React, { memo, useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Icon, ICON_IDS } from "@/components/icons";
-import type { IconId } from "@/components/icons";
+import Icon from "@/components/icons/Icon";
+import { ICON_IDS } from "@/components/icons/iconIds";
+import type { IconId } from "@/components/icons/iconIds";
 import { useMounted } from "@/app/hooks/useMounted";
 
 const navItems: { iconId: IconId; label: string; href: string }[] = [

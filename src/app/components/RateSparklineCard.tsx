@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Shimmer } from "@/components/skeletons";
+import { Shimmer } from "@/components/skeletons/Shimmer";
 import { useChartWorker } from "../charts/useChartWorker";
 import {
   computeSparklinePoints,

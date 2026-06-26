@@ -12,7 +12,8 @@ import {
   Play,
   Cpu
 } from 'lucide-react';
-import { Icon, ICON_IDS } from '@/components/icons';
+import Icon from '@/components/icons/Icon';
+import { ICON_IDS } from '@/components/icons/iconIds';
 
 // import the lightweight cache (CommonJS module)
 const langCache = require('./langCache');

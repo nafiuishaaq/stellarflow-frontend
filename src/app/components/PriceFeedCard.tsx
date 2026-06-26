@@ -8,13 +8,15 @@ import React, {
 } from "react";
 import { useRAFInterval } from "@/app/hooks/useRAFInterval";
 import { useInactivityDelay } from "@/app/hooks/useInactivityDelay";
-import { Icon, ICON_IDS } from "@/components/icons";
+import Icon from "@/components/icons/Icon";
+import { ICON_IDS } from "@/components/icons/iconIds";
 import { useProgressBar } from "./TopLoadingBar";
 import { useDebounce } from "../hooks/useDebounce";
 import { useRafThrottle } from "../hooks/useRafThrottle";
 import { useErrorTimeout } from "../hooks/useErrorTimeout";
 import { useSocketConnection, useSocketData } from "./providers/SocketProvider";
-import { PriceFeedCardSkeleton, Shimmer } from "@/components/skeletons";
+import { PriceFeedCardSkeleton } from "@/components/skeletons/PriceFeedCardSkeleton";
+import { Shimmer } from "@/components/skeletons/Shimmer";
 import { useMounted } from "@/app/hooks/useMounted";
 import { POLLING_INTERVALS, INACTIVITY_CONFIG } from "@/config/cacheConfig";
 

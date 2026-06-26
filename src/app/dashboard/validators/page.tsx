@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   useValidatorAudit,
   type ValidatorNode,

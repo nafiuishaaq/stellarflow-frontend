@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Icon, ICON_IDS } from '@/components/icons';
+import Icon from '@/components/icons/Icon';
+import { ICON_IDS } from '@/components/icons/iconIds';
 import { CONTRACT_HEALTH_ICON_VARIANTS } from '@/lib/classNameVariants';
 
 export default function ContractsPage() {

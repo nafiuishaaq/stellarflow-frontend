@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { shortenAddress } from '@/utils/addressUtils';
 import { RELAYERS_PAGE_STATUS_VARIANTS } from '@/lib/classNameVariants';
-import { Icon, ICON_IDS } from '@/components/icons';
+import Icon from '@/components/icons/Icon';
+import { ICON_IDS } from '@/components/icons/iconIds';
 
 export interface RelayerManagementRecord {
   id: string;

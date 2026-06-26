@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Icon, ICON_IDS } from '@/components/icons';
+import Icon from '@/components/icons/Icon';
+import { ICON_IDS } from '@/components/icons/iconIds';
 import { useDebounce } from '../hooks/useDebounce';
 import { useRafThrottle } from '../hooks/useRafThrottle';
 

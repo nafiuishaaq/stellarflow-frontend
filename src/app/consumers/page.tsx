@@ -11,7 +11,8 @@ import {
 } from 'lucide-react';
 import { useDebounce } from '@/app/hooks/useDebounce';
 import { withShortenedAddressField } from '@/utils/addressUtils';
-import { Icon, ICON_IDS } from '@/components/icons';
+import Icon from '@/components/icons/Icon';
+import { ICON_IDS } from '@/components/icons/iconIds';
 import { ConsumerSearchInput } from '@/app/components/ConsumerSearchInput';
 import {
   ConsumerTableRow,
