@@ -28,32 +28,39 @@ export interface UseSocketReturn {
 }
 
 // ---------------------------------------------------------------------------
-// Internal hook — manages all WebSocket state in one place.
+// Internal hook — delegates all transport concerns to WebSocketManager so
+// that this hook only manages per-consumer state (lastUpdate, isConnected).
 // ---------------------------------------------------------------------------
 
 function useSocketState(options: UseSocketOptions): UseSocketReturn {
-  const {
-    assetIds = [],
-    errorTimeoutMs = 5000,
-  } = options;
+  const { assetIds = [], errorTimeoutMs = 5000 } = options;
 
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<PriceData | null>(null);
   const { error, setError } = useErrorTimeout({ timeoutMs: errorTimeoutMs });
-  
-  // Local tracking of subscribed assets for this component lifecycle context
+
+  // Track which assets this consumer instance has subscribed to so that
+  // cleanup on unmount is scoped to only those assets.
   const subscribedAssetsRef = useRef<Set<string>>(new Set(assetIds));
   const isVisible = usePageVisibility();
+
+  // Batch pending WS message payloads; flushed by the RAF interval below so
+  // we never write state more than once per animation frame.
   const pendingUpdatesRef = useRef<(PriceData | Partial<PriceData>)[]>([]);
 
+  // Stable singleton transport layer — all consumers share one WS connection.
   const wsManager = WebSocketManager.getInstance();
 
+  // ------------------------------------------------------------------
+  // flushPendingUpdates — collapses all buffered ticks into one setState.
+  // Stable identity (empty dep-array) so the RAF interval never restarts.
+  // ------------------------------------------------------------------
   const flushPendingUpdates = useCallback(() => {
     if (pendingUpdatesRef.current.length === 0) return;
-    
+
     const updates = [...pendingUpdatesRef.current];
     pendingUpdatesRef.current.length = 0;
-    
+
     setLastUpdate((prev: PriceData | null) => {
       let current = prev;
       for (const update of updates) {
@@ -65,212 +72,117 @@ function useSocketState(options: UseSocketOptions): UseSocketReturn {
     });
   }, []);
 
-  // `connect` has an empty dependency array because every value it needs is
-  // accessed through a ref.  This breaks the cycle where a WS message would
-  // update `lastUpdate` → recreate `connect` → effect fires → socket torn down.
-  const connect = useCallback(function doConnect() {
-    if (
-      typeof document !== "undefined" &&
-      document.visibilityState === "hidden"
-    ) {
-      return;
-    }
-
-    pageVisibleRef.current = true;
-    manuallyDisconnectedRef.current = false;
-
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      return;
-    }
-    try {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws`;
-
-      wsRef.current = new WebSocket(wsUrl);
-
-      wsRef.current.onopen = () => {
-        setIsConnected(true);
-        setError(null);
-        reconnectAttemptsRef.current = 0;
-        setReconnectAttempts(0);
-
-        if (subscribedAssetsRef.current.size > 0) {
-          wsRef.current?.send(
-            JSON.stringify({
-              type: "subscribe",
-              assetIds: Array.from(subscribedAssetsRef.current),
-            }),
-          );
-        }
-      };
-
-      wsRef.current.onmessage = (event: MessageEvent) => {
-        if (!pageVisibleRef.current) return;
-
-        try {
-          const message: SocketMessage = JSON.parse(event.data as string);
-
-          if (
-            message.type === "price_update" ||
-            message.type === "delta_update"
-          ) {
-            // Add to pending updates instead of updating state directly
-            pendingUpdatesRef.current.push(message.data);
-          }
-        } catch (err) {
-          console.error("Failed to parse WebSocket message:", err);
-        }
-      };
-
-      wsRef.current.onclose = (event: CloseEvent) => {
-        setIsConnected(false);
-
-        // Flush any remaining pending updates
-        flushPendingUpdates();
-
-        // Use ref for reconnect counter — avoids stale closure.
-        if (
-          !event.wasClean &&
-          !manuallyDisconnectedRef.current &&
-          pageVisibleRef.current &&
-          reconnectAttemptsRef.current < maxReconnectAttemptsRef.current
-        ) {
-          reconnectAttemptsRef.current += 1;
-          setReconnectAttempts(reconnectAttemptsRef.current);
-          reconnectTimeoutRef.current = setTimeout(() => {
-            if (subscribedAssetsRef.current.size > 0) {
-              doConnect();
-            }
-          }, reconnectIntervalRef.current);
-        }
-      };
-
-      wsRef.current.onerror = (event: Event) => {
-        setError("WebSocket connection error");
-        console.error("WebSocket error:", event);
-      };
-    } catch (err) {
-      setError("Failed to establish WebSocket connection");
-      console.error("Connection error:", err);
-    }
-  }, [flushPendingUpdates, setError]);
-
+  // ------------------------------------------------------------------
+  // disconnect — unregisters this consumer's listeners and asset subs.
+  // ------------------------------------------------------------------
   const disconnect = useCallback(() => {
-    manuallyDisconnectedRef.current = true;
+    if (subscribedAssetsRef.current.size > 0) {
+      wsManager.unsubscribeFromAssets(
+        Array.from(subscribedAssetsRef.current),
+      );
+    }
+    setIsConnected(false);
+  }, [wsManager]);
+
+  // ------------------------------------------------------------------
+  // subscribeToAsset / unsubscribeFromAsset — delegate to the manager.
+  // ------------------------------------------------------------------
+  const subscribeToAsset = useCallback(
+    (assetId: string) => {
+      if (!subscribedAssetsRef.current.has(assetId)) {
+        subscribedAssetsRef.current.add(assetId);
+        wsManager.subscribeToAssets([assetId]);
+      }
+    },
+    [wsManager],
+  );
+
+  const unsubscribeFromAsset = useCallback(
+    (assetId: string) => {
+      if (subscribedAssetsRef.current.has(assetId)) {
+        subscribedAssetsRef.current.delete(assetId);
+        wsManager.unsubscribeFromAssets([assetId]);
+      }
+    },
+    [wsManager],
+  );
+
+  // ------------------------------------------------------------------
+  // reconnect — tears down and re-connects via the manager.
+  // ------------------------------------------------------------------
+  const reconnect = useCallback(() => {
+    disconnect();
+    // Re-establish after a microtask so disconnect's cleanup completes first.
+    setTimeout(() => {
+      wsManager.connect();
+      if (subscribedAssetsRef.current.size > 0) {
+        wsManager.subscribeToAssets(
+          Array.from(subscribedAssetsRef.current),
+        );
+      }
+    }, 100);
+  }, [disconnect, wsManager]);
+
+  // ------------------------------------------------------------------
+  // Mount effect — register listeners and initial asset subscriptions.
+  // Runs once; all callbacks are stable so this never tears down on ticks.
+  // ------------------------------------------------------------------
+  useEffect(() => {
+    const handleIncomingData = (data: PriceData | Partial<PriceData>) => {
+      if (!isVisible) return;
+      pendingUpdatesRef.current.push(data);
+    };
 
     const handleStatusChange = (status: boolean) => {
       setIsConnected(status);
+      if (!status) {
+        setError("WebSocket disconnected");
+      } else {
+        setError(null);
+      }
     };
 
     wsManager.subscribeToMessages(handleIncomingData);
     wsManager.subscribeToStatus(handleStatusChange);
 
-    // Initial asset registrations
+    // Ensure the singleton connection is open.
+    wsManager.connect();
+
+    // Register assets for this consumer instance.
     if (subscribedAssetsRef.current.size > 0) {
       wsManager.subscribeToAssets(Array.from(subscribedAssetsRef.current));
     }
 
-    setIsConnected(false);
-  }, [flushPendingUpdates]);
-
-  const reconnect = useCallback(() => {
-    disconnect();
-    manuallyDisconnectedRef.current = false;
-    reconnectAttemptsRef.current = 0;
-    setReconnectAttempts(0);
-    
-    // Clear any existing reconnect timeout
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-    }
-    
-    // Set new reconnect timeout and track it
-    reconnectTimeoutRef.current = setTimeout(() => {
-      reconnectTimeoutRef.current = null;
-      if (subscribedAssetsRef.current.size > 0) {
-        connect();
-      }
-    }, 100);
-  }, [disconnect, connect]);
-
-  const subscribeToAsset = useCallback((assetId: string) => {
-    if (!subscribedAssetsRef.current.has(assetId)) {
-      subscribedAssetsRef.current.add(assetId);
-
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(
-          JSON.stringify({ type: "subscribe", assetIds: [assetId] }),
-        );
-      } else if (!wsRef.current) {
-        connect();
-      }
-    }
-  }, [connect]);
-
-  const unsubscribeFromAsset = useCallback((assetId: string) => {
-    if (subscribedAssetsRef.current.has(assetId)) {
-      subscribedAssetsRef.current.delete(assetId);
-
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(
-          JSON.stringify({ type: "unsubscribe", assetIds: [assetId] }),
-        );
-      }
-
-      if (subscribedAssetsRef.current.size === 0) {
-        disconnect();
-      }
-    }
-  }, [disconnect]);
-
-  // Both `connect` and `disconnect` are now stable (empty dep arrays), so this
-  // effect only runs once on mount and once on unmount — never on data ticks.
-  useEffect(() => {
-    if (subscribedAssetsRef.current.size > 0) {
-      connect();
-    }
     return () => {
-      disconnect();
-    };
-  }, [connect, disconnect]);
-
-  // Dedicated cleanup guard to ensure refs are released on unmount even if the
-  // effect above runs in strict-mode double-invocation.
-  useEffect(() => {
-    return () => {
-
-      // Flush any remaining pending updates
+      // Deregister listeners on unmount — flush any buffered ticks first.
       flushPendingUpdates();
+      wsManager.unsubscribeFromMessages(handleIncomingData);
+      wsManager.unsubscribeFromStatus(handleStatusChange);
 
-  const disconnect = useCallback(() => {
-    // Manual local disconnection can simply clear local contextual tracking assets
-    if (subscribedAssetsRef.current.size > 0) {
-      wsManager.unsubscribeFromAssets(Array.from(subscribedAssetsRef.current));
-    }
-    setIsConnected(false);
-  }, [wsManager]);
-
-    if (!manuallyDisconnectedRef.current) {
-      reconnectAttemptsRef.current = 0;
-      setReconnectAttempts(0);
       if (subscribedAssetsRef.current.size > 0) {
-        connect();
+        wsManager.unsubscribeFromAssets(
+          Array.from(subscribedAssetsRef.current),
+        );
       }
-    }
-  }, [isVisible, connect]);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // `isVisible` is intentionally excluded: page-visibility pausing is handled
+    // inside handleIncomingData, not by tearing down and restarting the effect.
+  }, [wsManager, flushPendingUpdates, setError]);
 
-  // Master layout clock batching matches performance guidelines
-  useRAFInterval(
-    flushPendingUpdates,
-    350,
-    isConnected
-  );
+  // Pause data delivery while the page is hidden — no state needed, handled
+  // inside the message callback via the closure over `isVisible`.
+
+  // Master layout clock — flush buffered price ticks at most once per frame
+  // while the socket is connected, keeping all state writes off the critical
+  // user-interaction lane.
+  useRAFInterval(flushPendingUpdates, 350, isConnected);
 
   return {
     isConnected,
     lastUpdate,
     error,
-    reconnectAttempts: 0, // Handled automatically at network class layer now
+    reconnectAttempts: 0, // Handled automatically at the WebSocketManager layer
     subscribeToAsset,
     unsubscribeFromAsset,
     disconnect,
@@ -305,6 +217,15 @@ export function useSocket<Selected = UseSocketReturn>(
   return useMemo(
     () => (selector ? selector(state) : (state as unknown as Selected)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selector, state.isConnected, state.lastUpdate, state.error, state.subscribeToAsset, state.unsubscribeFromAsset, state.disconnect, state.reconnect],
+    [
+      selector,
+      state.isConnected,
+      state.lastUpdate,
+      state.error,
+      state.subscribeToAsset,
+      state.unsubscribeFromAsset,
+      state.disconnect,
+      state.reconnect,
+    ],
   );
 }
