@@ -89,8 +89,6 @@ function mergeDecodedLogs(
       decodedData,
     };
   });
-}main
-  });
 }
 
 function LogsSkeleton() {
